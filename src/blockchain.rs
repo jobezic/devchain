@@ -1,5 +1,6 @@
 use sha2::{Digest, Sha256};
 use chrono::Utc;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 struct Block {
@@ -8,13 +9,33 @@ struct Block {
     data: String,
     previous_hash: String,
     hash: String,
+    nonce: u64,
 }
 
 impl Block {
-    fn new(index: u64, data: String, previous_hash: String) -> Block {
+    fn new(index: u64, data: String, previous_hash: String, difficulty: usize) -> Block {
         let timestamp = Utc::now().to_rfc3339();
-        let content = format!("{}{}{}{}", index, &timestamp, &data, &previous_hash);
-        let hash = calculate_hash(&content);
+        let mut nonce = 0;
+        let mut hash;
+
+        let start = Instant::now();
+
+        loop {
+            let content = format!("{}{}{}{}{}", index, &timestamp, &data, &previous_hash, nonce);
+            hash = calculate_hash(&content);
+
+            if hash.starts_with(&"0".repeat(difficulty)) {
+                break;
+            }
+
+            nonce += 1;
+        }
+
+        let duration = start.elapsed();
+        println!(
+            "⛏️  Mined block {} in {:.2?} (nonce: {}, hash: {})",
+            index, duration, nonce, hash
+        );
 
         Block {
             index,
@@ -22,6 +43,7 @@ impl Block {
             data,
             previous_hash,
             hash,
+            nonce,
         }
     }
 }
@@ -35,17 +57,26 @@ fn calculate_hash(content: &str) -> String {
 
 pub struct Blockchain {
     chain: Vec<Block>,
+    difficulty: usize,
 }
 
 impl Blockchain {
-    pub fn new() -> Self {
-        let genesis = Block::new(0, "Genesis Block".into(), "0".into());
-        Blockchain { chain: vec![genesis] }
+    pub fn new(difficulty: usize) -> Self {
+        let genesis = Block::new(0, "Genesis Block".into(), "0".into(), difficulty);
+        Blockchain {
+            chain: vec![genesis],
+            difficulty,
+        }
     }
 
     pub fn add_block(&mut self, data: String) {
         let last = self.chain.last().unwrap();
-        let new_block = Block::new(last.index + 1, data, last.hash.clone());
+        let new_block = Block::new(
+            last.index + 1,
+            data,
+            last.hash.clone(),
+            self.difficulty,
+        );
         self.chain.push(new_block);
     }
 
@@ -58,8 +89,17 @@ impl Blockchain {
                 return false;
             }
 
-            let content = format!("{}{}{}{}", current.index, current.timestamp, current.data, current.previous_hash);
-            if current.hash != calculate_hash(&content) {
+            let content = format!(
+                "{}{}{}{}{}",
+                current.index,
+                current.timestamp,
+                current.data,
+                current.previous_hash,
+                current.nonce
+            );
+            if current.hash != calculate_hash(&content)
+                || !current.hash.starts_with(&"0".repeat(self.difficulty))
+            {
                 return false;
             }
         }

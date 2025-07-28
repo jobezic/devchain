@@ -3,7 +3,7 @@ use crate::blockchain::Blockchain;
 mod blockchain;
 
 fn main() {
-    let mut blockchain = Blockchain::new();
+    let mut blockchain = Blockchain::new(4); // Difficulty: number of leading zeros
 
     blockchain.add_block("First block data".into());
     blockchain.add_block("Second block data".into());
