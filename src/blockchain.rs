@@ -2,26 +2,41 @@ use sha2::{Digest, Sha256};
 use chrono::Utc;
 use std::time::Instant;
 
+const BLOCK_REWARD: u64 = 50; // Reward per block in "coins"
+
 #[derive(Debug, Clone)]
 struct Block {
     index: u64,
     timestamp: String,
-    data: String,
+    transactions: Vec<String>,
     previous_hash: String,
     hash: String,
     nonce: u64,
 }
 
 impl Block {
-    fn new(index: u64, data: String, previous_hash: String, difficulty: usize) -> Block {
+    fn new(index: u64, miner_address: &str, previous_hash: String, difficulty: usize, data: Option<String>) -> Block {
         let timestamp = Utc::now().to_rfc3339();
         let mut nonce = 0;
         let mut hash;
 
+        // Create the reward transaction (coinbase)
+        let mut transactions = vec![format!("Reward {} coins to {}", BLOCK_REWARD, miner_address)];
+        if let Some(extra_data) = data {
+            transactions.push(extra_data);
+        }
+
         let start = Instant::now();
 
         loop {
-            let content = format!("{}{}{}{}{}", index, &timestamp, &data, &previous_hash, nonce);
+            let content = format!(
+                "{}{}{:?}{}{}",
+                index,
+                timestamp,
+                transactions,
+                previous_hash,
+                nonce
+            );
             hash = calculate_hash(&content);
 
             if hash.starts_with(&"0".repeat(difficulty)) {
@@ -40,7 +55,7 @@ impl Block {
         Block {
             index,
             timestamp,
-            data,
+            transactions,
             previous_hash,
             hash,
             nonce,
@@ -58,24 +73,27 @@ fn calculate_hash(content: &str) -> String {
 pub struct Blockchain {
     chain: Vec<Block>,
     difficulty: usize,
+    reward_address: String,
 }
 
 impl Blockchain {
-    pub fn new(difficulty: usize) -> Self {
-        let genesis = Block::new(0, "Genesis Block".into(), "0".into(), difficulty);
+    pub fn new(difficulty: usize, miner_address: &str) -> Self {
+        let genesis = Block::new(0, miner_address, "0".into(), difficulty, Some("Genesis block".into()));
         Blockchain {
             chain: vec![genesis],
             difficulty,
+            reward_address: miner_address.to_string(),
         }
     }
 
-    pub fn add_block(&mut self, data: String) {
+    pub fn add_block(&mut self, data: Option<String>) {
         let last = self.chain.last().unwrap();
         let new_block = Block::new(
             last.index + 1,
-            data,
+            &self.reward_address,
             last.hash.clone(),
             self.difficulty,
+            data,
         );
         self.chain.push(new_block);
     }
@@ -90,13 +108,14 @@ impl Blockchain {
             }
 
             let content = format!(
-                "{}{}{}{}{}",
+                "{}{}{:?}{}{}",
                 current.index,
                 current.timestamp,
-                current.data,
+                current.transactions,
                 current.previous_hash,
                 current.nonce
             );
+
             if current.hash != calculate_hash(&content)
                 || !current.hash.starts_with(&"0".repeat(self.difficulty))
             {
