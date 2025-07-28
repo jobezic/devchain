@@ -31,7 +31,7 @@ impl Block {
 
         // Create the reward transaction (coinbase)
         let mut transactions = vec![Transaction {
-            from: "".to_string(),
+            from: "COINBASE".to_string(),
             to: miner_address.to_string(),
             amount: BLOCK_REWARD,
         }];
