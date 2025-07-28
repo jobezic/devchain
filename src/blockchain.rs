@@ -3,6 +3,7 @@ use chrono::Utc;
 use std::time::Instant;
 
 const BLOCK_REWARD: u64 = 50; // Reward per block in "coins"
+const DIFFICULTY: usize = 4; // Mining difficulty
 
 #[derive(Debug, Clone)]
 struct Block {
@@ -77,11 +78,11 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
-    pub fn new(difficulty: usize, miner_address: &str) -> Self {
-        let genesis = Block::new(0, miner_address, "0".into(), difficulty, Some("Genesis block".into()));
+    pub fn new(miner_address: &str) -> Self {
+        let genesis = Block::new(0, miner_address, "0".into(), DIFFICULTY, Some("Genesis block".into()));
         Blockchain {
             chain: vec![genesis],
-            difficulty,
+            difficulty: DIFFICULTY,
             reward_address: miner_address.to_string(),
         }
     }
