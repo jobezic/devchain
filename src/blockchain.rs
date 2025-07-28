@@ -1,29 +1,41 @@
 use sha2::{Digest, Sha256};
 use chrono::Utc;
 use std::time::Instant;
+use serde::{Serialize, Deserialize};
 
 const BLOCK_REWARD: u64 = 50; // Reward per block in "coins"
 const DIFFICULTY: usize = 4; // Mining difficulty
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transaction {
+    pub from: String,
+    pub to: String,
+    pub amount: u64,
+}
 
 #[derive(Debug, Clone)]
 struct Block {
     index: u64,
     timestamp: String,
-    transactions: Vec<String>,
     previous_hash: String,
     hash: String,
     nonce: u64,
+    transactions: Vec<Transaction>,
 }
 
 impl Block {
-    fn new(index: u64, miner_address: &str, previous_hash: String, difficulty: usize, data: Option<String>) -> Block {
+    fn new(index: u64, miner_address: &str, previous_hash: String, difficulty: usize, transaction: Option<Transaction>) -> Block {
         let timestamp = Utc::now().to_rfc3339();
         let mut nonce = 0;
         let mut hash;
 
         // Create the reward transaction (coinbase)
-        let mut transactions = vec![format!("Reward {} coins to {}", BLOCK_REWARD, miner_address)];
-        if let Some(extra_data) = data {
+        let mut transactions = vec![Transaction {
+            from: "".to_string(),
+            to: miner_address.to_string(),
+            amount: BLOCK_REWARD,
+        }];
+        if let Some(extra_data) = transaction {
             transactions.push(extra_data);
         }
 
@@ -56,10 +68,10 @@ impl Block {
         Block {
             index,
             timestamp,
-            transactions,
             previous_hash,
             hash,
             nonce,
+            transactions,
         }
     }
 }
@@ -79,7 +91,7 @@ pub struct Blockchain {
 
 impl Blockchain {
     pub fn new(miner_address: &str) -> Self {
-        let genesis = Block::new(0, miner_address, "0".into(), DIFFICULTY, Some("Genesis block".into()));
+        let genesis = Block::new(0, miner_address, "0".into(), DIFFICULTY, None);
         Blockchain {
             chain: vec![genesis],
             difficulty: DIFFICULTY,
@@ -87,14 +99,14 @@ impl Blockchain {
         }
     }
 
-    pub fn add_block(&mut self, data: Option<String>) {
+    pub fn add_block(&mut self, transaction: Option<Transaction>) {
         let last = self.chain.last().unwrap();
         let new_block = Block::new(
             last.index + 1,
             &self.reward_address,
             last.hash.clone(),
             self.difficulty,
-            data,
+            transaction,
         );
         self.chain.push(new_block);
     }
