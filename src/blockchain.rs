@@ -1,6 +1,7 @@
+use anyhow::anyhow;
 use sha2::{Digest, Sha256};
 use chrono::Utc;
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 use serde::{Serialize, Deserialize};
 
 const BLOCK_REWARD: u64 = 50; // Reward per block in "coins"
@@ -99,7 +100,14 @@ impl Blockchain {
         }
     }
 
-    pub fn add_block(&mut self, transaction: Option<Transaction>) {
+    pub fn add_block(&mut self, transaction: Option<Transaction>) -> anyhow::Result<()> {
+        if let Some(transaction) = transaction.clone() {
+            let balances = self.get_balances();
+            if !is_transaction_valid(&transaction, &balances) {
+                return Err(anyhow!("transaction: {:#?} is not valid", transaction));
+            }
+        }
+
         let last = self.chain.last().unwrap();
         let new_block = Block::new(
             last.index + 1,
@@ -109,6 +117,8 @@ impl Blockchain {
             transaction,
         );
         self.chain.push(new_block);
+
+        Ok(())
     }
 
     pub fn is_valid(&self) -> bool {
@@ -136,11 +146,39 @@ impl Blockchain {
             }
         }
         true
+    }    
+
+    pub fn get_balances(&self) -> HashMap<String, i64> {
+        let mut balances = HashMap::new();
+
+        for block in &self.chain {
+            for tx in &block.transactions {
+                let from_balance = balances.entry(tx.from.clone()).or_insert(0);
+                *from_balance -= tx.amount as i64;
+
+                let to_balance = balances.entry(tx.to.clone()).or_insert(0);
+                *to_balance += tx.amount as i64;
+            }
+        }
+
+        balances
     }
+
 
     pub fn print_chain(&self) {
         for block in &self.chain {
             println!("{:#?}", block);
         }
+    }
+}
+
+fn is_transaction_valid(tx: &Transaction, balances: &HashMap<String, i64>) -> bool {
+    if tx.from == "COINBASE" {
+        return true; // block reward
+    }
+
+    match balances.get(&tx.from) {
+        Some(balance) if *balance >= tx.amount as i64 => true,
+        _ => false,
     }
 }
