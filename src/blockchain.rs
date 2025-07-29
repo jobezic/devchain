@@ -15,7 +15,7 @@ pub struct Transaction {
 }
 
 #[derive(Debug, Clone)]
-struct Block {
+pub struct Block {
     index: u64,
     timestamp: String,
     previous_hash: String,
@@ -164,11 +164,8 @@ impl Blockchain {
         balances
     }
 
-
-    pub fn print_chain(&self) {
-        for block in &self.chain {
-            println!("{:#?}", block);
-        }
+    pub fn to_blocks(&self) -> Vec<Block> {
+        self.chain.clone()
     }
 }
 

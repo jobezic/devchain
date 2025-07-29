@@ -19,14 +19,20 @@ fn main() {
     blockchain.add_block(Some(Transaction {
         from: "Charlie".to_string(),
         to: "Alice".to_string(),
-        amount: 4,
+        amount: 2,
     })).unwrap();
 
-    blockchain.print_chain();
+    print_chain(&blockchain);
 
     println!("Blockchain valid? {}", blockchain.is_valid());
     let balances = blockchain.get_balances();
     for (address, balance) in balances {
         println!("{} has {}", address, balance);
+    }
+}
+
+pub fn print_chain(blockchain: &Blockchain) {
+    for block in blockchain.to_blocks() {
+        println!("{:#?}", block);
     }
 }
