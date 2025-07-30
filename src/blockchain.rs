@@ -3,6 +3,9 @@ use sha2::{Digest, Sha256};
 use chrono::Utc;
 use std::{collections::HashMap, time::Instant};
 use serde::{Serialize, Deserialize};
+use ed25519_dalek::{Signature, PublicKey, Verifier};
+
+use crate::wallet::Wallet;
 
 const BLOCK_REWARD: u64 = 50; // Reward per block in "coins"
 const DIFFICULTY: usize = 4; // Mining difficulty
@@ -12,6 +15,55 @@ pub struct Transaction {
     pub from: String,
     pub to: String,
     pub amount: u64,
+    pub signature: Option<String>,
+    pub public_key: Option<String>,
+}
+
+impl Transaction {
+    pub fn sign(mut self, wallet: &Wallet) -> Self {
+        let tx_data = format!("{}{}{}", self.from, self.to, self.amount);
+        let message = tx_data.as_bytes();
+
+        let signature = wallet.sign(message);
+        let signature_hex = hex::encode(signature.to_bytes());
+        let public_key_hex = hex::encode(wallet.keypair.public.as_bytes());
+
+        self.signature = Some(signature_hex);
+        self.public_key = Some(public_key_hex);
+
+        self
+    }
+
+    pub fn verify_transaction_signature(&self) -> bool {
+        let Some(sig_hex) = &self.signature else { return false; };
+        let Some(pk_hex) = &self.public_key else { return false; };
+    
+        let tx_data = format!("{}{}{}", self.from, self.to, self.amount);
+        let message = tx_data.as_bytes();
+    
+        let sig_bytes = match hex::decode(sig_hex) {
+            Ok(b) => b,
+            Err(_) => return false,
+        };
+    
+        let pk_bytes = match hex::decode(pk_hex) {
+            Ok(b) => b,
+            Err(_) => return false,
+        };
+    
+        let signature = match Signature::from_bytes(&sig_bytes) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+    
+        let public_key = match PublicKey::from_bytes(&pk_bytes) {
+            Ok(pk) => pk,
+            Err(_) => return false,
+        };
+    
+        public_key.verify(message, &signature).is_ok()
+    }
+    
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -39,6 +91,8 @@ impl Block {
                 from: "COINBASE".to_string(),
                 to: miner_address.to_string(),
                 amount: BLOCK_REWARD,
+                signature: None,
+                public_key: None,
             });
         }
 
@@ -175,6 +229,10 @@ impl Blockchain {
 fn is_transaction_valid(tx: &Transaction, balances: &HashMap<String, i64>) -> bool {
     if tx.from == "COINBASE" {
         return true; // block reward
+    }
+
+    if !tx.verify_transaction_signature() {
+        return false;
     }
 
     match balances.get(&tx.from) {

@@ -48,10 +48,14 @@ fn main() {
                 from: wallet.address(),
                 to: to.clone(),
                 amount: *amount,
+                signature: None,
+                public_key: None,
             };
 
-            if let Ok(_) = blockchain.add_block(Some(tx.clone())) {
-                println!("✅ Transaction added to pool: {:?}", tx);
+            let signed_tx = tx.sign(&wallet);
+
+            if let Ok(_) = blockchain.add_block(Some(signed_tx.clone())) {
+                println!("✅ Transaction added to pool: {:?}", signed_tx);
             } else {
                 println!("❌ Not enough funds or invalid transaction");
             }
