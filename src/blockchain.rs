@@ -14,7 +14,7 @@ pub struct Transaction {
     pub amount: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
     index: u64,
     timestamp: String,
@@ -31,13 +31,15 @@ impl Block {
         let mut hash;
 
         // Create the reward transaction (coinbase)
-        let mut transactions = vec![Transaction {
-            from: "COINBASE".to_string(),
-            to: miner_address.to_string(),
-            amount: BLOCK_REWARD,
-        }];
+        let mut transactions = vec![];
         if let Some(extra_data) = transaction {
             transactions.push(extra_data);
+        } else {
+            transactions.push(Transaction {
+                from: "COINBASE".to_string(),
+                to: miner_address.to_string(),
+                amount: BLOCK_REWARD,
+            });
         }
 
         let start = Instant::now();
