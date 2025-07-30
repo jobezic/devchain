@@ -1,8 +1,8 @@
-== DEVCHAIN ==
+# DEVCHAIN
 
 A handmade blockchain to learn blockchains.
 
-== RUN ==
+## RUN
 
 `cargo run -- balance`
 
@@ -10,7 +10,7 @@ A handmade blockchain to learn blockchains.
 
 `cargo run -- send <address> <amount>`
 
-== TODO ==
+## TODO
 
 - coinbase transaction self signed?
 - BLOCKCHAIN
