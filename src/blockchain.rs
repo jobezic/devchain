@@ -84,6 +84,7 @@ fn calculate_hash(content: &str) -> String {
     hex::encode(result)
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Blockchain {
     chain: Vec<Block>,
     difficulty: usize,
